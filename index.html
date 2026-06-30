@@ -11,7 +11,6 @@
             --secondary-color: #f57c00;
             --bg-color: #f5f5f5;
             --text-color: #333;
-            --card-bg: #white;
         }
 
         body {
@@ -202,7 +201,7 @@
             <p>Wprowadź od 2 do 9 liter (możesz użyć znaku * jako blanka / czystej płytki)</p>
             
             <div class="search-box">
-                <input type="text" id="lettersInput" placeholder="np. KOTwica" maxlength="9" autocomplete="off">
+                <input type="text" id="lettersInput" placeholder="np. KOTwica" maxlength="9" autocomplete="off" onkeypress="handleKeyPress(event)">
                 <button onclick="findWords()">Szukaj słów</button>
             </div>
             
@@ -217,7 +216,147 @@
             <p>Nasz zaawansowany słownik Scrabble pozwala na błyskawiczne generowanie wszystkich możliwych wyrazów, które można stworzyć z Twojego aktualnego zestawu liter. Narzędzie sprawdza dopuszczalność słów w grach takich jak Scrabble, Literaki czy Wordfeud, opierając się na oficjalnych zasadach języka polskiego.</p>
             
             <h2>Zastosowanie blanków (*)</h2>
-            <p>Masz w swoim stojaku czystą płytkę? Żaden problem! Wpisz gwiazdkę (*) w pole wyszukiwania, a nasz system dopasuje ją jako dowolną literę alfabetu, ułatwiając ułożenie najwyżej punktowanych wyrazów (tzw. premii siedmioliterowych).</p>
+            <p>Masz w swoim stojaku czystą płytkę? Żaden problem! Wpisz gwiazdkę (*) w pole wyszukiwania, a nasz system dopasuje ją jako dowolną literę alfabetu, ułatwiając ułożenie najwyżej punktowanych wyrazów.</p>
             
             <h2>Szybkie wyszukiwanie trudnych liter</h2>
             <p>Masz problem z trudną literą pod koniec rozgrywki lub szukasz inspiracji? Wybierz jedną z poniższych sekcji, aby sprawdzić gotowe strategie:</p>
+            <div class="quick-links">
+                <a href="#" onclick="presetSearch('Z')">Słowa z literą Z</a>
+                <a href="#" onclick="presetSearch('X')">Słowa z literą X</a>
+                <a href="#" onclick="presetSearch('Y')">Słowa z literą Y</a>
+                <a href="#" onclick="presetSearch('KA')">Słowa na KA</a>
+                <a href="#" onclick="presetSearch('BO')">Słowa na BO</a>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 Słownik Scrabble Online. Serwis stworzony dla fanów gier słownych. Analizuj, układaj i zwyciężaj.</p>
+    </footer>
+
+    <script>
+        // Poprawna punktacja liter w polskim Scrabble
+        const letterPoints = {
+            'A':1, 'Ą':5, 'B':3, 'C':2, 'Ć':6, 'D':2, 'E':1, 'Ę':5, 'F':5, 'G':3,
+            'H':3, 'I':1, 'J':3, 'K':2, 'L':2, 'Ł':3, 'M':2, 'N':1, 'Ń':7, 'O':1,
+            'Ó':5, 'P':2, 'R':1, 'S':1, 'Ś':5, 'T':2, 'U':3, 'W':1, 'Y':2, 'Z':1,
+            'Ź':9, 'Ż':5
+        };
+
+        // Pokazowa baza słów do wyszukiwania
+        const dictionary = [
+            "AKR", "AKT", "ALKO", "ANAGRAM", "ARKA", "AS", "ATAK", 
+            "BAR", "BRAMA", "BUT", "CEBULA", "CHROMA", "CIS", "CO", "CZAS",
+            "DO", "DOM", "DOMEK", "DROGA", "DYM", "DWA", "EKRAN", "ERA",
+            "FARBA", "FORMA", "GRA", "GRY", "GÓRA", "HAMAK", "HONOR",
+            "IKONA", "IGŁA", "JA", "JAK", "JUTRO", "KOT", "KOTA", "KOTWICA", "KARA", "KAWA", "KINO", "KLASA", "KROK",
+            "LATO", "LITERA", "LITERAKI", "LIS", "ŁÓDŹ", "MAMA", "MIASTO", "MOC", "MYTO",
+            "NA", "NO", "NOS", "NOGA", "OKNO", "OKOP", "OPIS", "ORZEŁ",
+            "PARK", "PIES", "PŁOT", "PUNKT", "RAMA", "ROK", "ROWER", "RYBA",
+            "SCRABBLE", "SŁOWO", "SŁOWNIK", "SMOK", "STÓŁ", "SER", "SIŁA",
+            "TATA", "TRAWA", "TOM", "TOR", "UL", "USTA", "WAGA", "WODA", "WOR", "WÓDKA",
+            "XENON", "YETI", "ZA", "ZEBRA", "ZIMA", "ZNAK", "ŹREBIĘ", "ŻABA", "ŻYĆ"
+        ];
+
+        function calculatePoints(word) {
+            let pts = 0;
+            for (let char of word.toUpperCase()) {
+                pts += letterPoints[char] || 0;
+            }
+            return pts;
+        }
+
+        function presetSearch(letters) {
+            document.getElementById('lettersInput').value = letters;
+            findWords();
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === "Enter") {
+                findWords();
+            }
+        }
+
+        function findWords() {
+            const input = document.getElementById('lettersInput').value.trim().toUpperCase();
+            const resultsDiv = document.getElementById('results');
+            const statusDiv = document.getElementById('statusMessage');
+            
+            resultsDiv.innerHTML = '';
+            resultsDiv.style.display = 'none';
+            
+            if (input.length < 2) {
+                statusDiv.style.color = 'red';
+                statusDiv.innerHTML = 'Wpisz co najmniej 2 litery!';
+                return;
+            }
+            
+            statusDiv.style.color = 'var(--primary-color)';
+            statusDiv.innerHTML = 'Przeszukiwanie słownika dla zestawu: "' + input + '"...';
+
+            let foundWords = [];
+
+            for (let word of dictionary) {
+                let tempInputLetters = input.split('');
+                let canBuild = true;
+
+                for (let char of word) {
+                    let index = tempInputLetters.indexOf(char);
+                    if (index !== -1) {
+                        tempInputLetters.splice(index, 1);
+                    } else {
+                        let blankIndex = tempInputLetters.indexOf('*');
+                        if (blankIndex !== -1) {
+                            tempInputLetters.splice(blankIndex, 1);
+                        } else {
+                            canBuild = false;
+                            break;
+                        }
+                    }
+                }
+
+                if (canBuild) {
+                    foundWords.push({
+                        word: word,
+                        length: word.length,
+                        points: calculatePoints(word)
+                    });
+                }
+            }
+
+            foundWords.sort((a, b) => b.length - a.length || b.points - a.points);
+
+            if (foundWords.length === 0) {
+                statusDiv.style.color = 'red';
+                statusDiv.innerHTML = 'Nie znaleziono słów w bazie dla podanych liter.';
+                return;
+            }
+
+            statusDiv.innerHTML = 'Znaleziono ' + foundWords.length + ' pasujących słów!';
+            resultsDiv.style.display = 'block';
+
+            let groups = {};
+            foundWords.forEach(item => {
+                if (!groups[item.length]) groups[item.length] = [];
+                groups[item.length].push(item);
+            });
+
+            for (let len in groups) {
+                let groupHTML = `<div class="results-group">`;
+                groupHTML += `<h3>Słowa ${len}-literowe:</h3>`;
+                
+                groups[len].forEach(item => {
+                    groupHTML += `
+                        <span class="word-badge">
+                            ${item.word} <span class="word-pts">${item.points}p.</span>
+                        </span>
+                    `;
+                });
+                
+                groupHTML += `</div>`;
+                resultsDiv.innerHTML += groupHTML;
+            }
+        }
+    </script>
+</body>
+</html>
