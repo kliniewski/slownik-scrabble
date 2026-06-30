@@ -10,14 +10,20 @@ jobs:
     name: Deploy
     runs-on: ubuntu-latest
     steps:
-    - name: 🚚 Get latest code
+    - name: Pobierz kod z repozytorium
       uses: actions/checkout@v4
 
-    - name: 🚀 Sync files
+    - name: Sprawdź katalog startowy FTP (Debug)
+      run: |
+        sudo apt-get update && sudo apt-get install -y lftp
+        lftp -u ${{ secrets.FTP_USERNAME }},${{ secrets.FTP_PASSWORD }} ${{ secrets.FTP_SERVER }} -e "pwd; ls; quit"
+
+    - name: Sync files
       uses: SamKirkland/FTP-Deploy-Action@v4.3.5
       with:
         server: ${{ secrets.FTP_SERVER }}
         username: ${{ secrets.FTP_USERNAME }}
         password: ${{ secrets.FTP_PASSWORD }}
         local-dir: ./
-        server-dir: ""  # Tutaj wpisz ścieżkę do folderu na Cytrusie
+        server-dir: ""
+        state-name: ""
