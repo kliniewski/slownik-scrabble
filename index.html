@@ -202,10 +202,10 @@
             
             <div class="search-box">
                 <input type="text" id="lettersInput" placeholder="np. KOTwica" maxlength="9" autocomplete="off" onkeypress="handleKeyPress(event)">
-                <button onclick="findWords()">Szukaj słów</button>
+                <button id="searchBtn" onclick="findWords()" disabled>Czekaj...</button>
             </div>
             
-            <div id="statusMessage" style="color: #666; font-style: italic;"></div>
+            <div id="statusMessage" style="color: #666; font-style: italic;">Inicjalizacja systemu...</div>
 
             <div id="results" class="results-container">
                 </div>
@@ -235,7 +235,7 @@
     </footer>
 
     <script>
-        // Poprawna punktacja liter w polskim Scrabble
+        // Punktacja liter w polskim Scrabble
         const letterPoints = {
             'A':1, 'Ą':5, 'B':3, 'C':2, 'Ć':6, 'D':2, 'E':1, 'Ę':5, 'F':5, 'G':3,
             'H':3, 'I':1, 'J':3, 'K':2, 'L':2, 'Ł':3, 'M':2, 'N':1, 'Ń':7, 'O':1,
@@ -243,20 +243,45 @@
             'Ź':9, 'Ż':5
         };
 
-        // Pokazowa baza słów do wyszukiwania
-        const dictionary = [
-            "AKR", "AKT", "ALKO", "ANAGRAM", "ARKA", "AS", "ATAK", 
-            "BAR", "BRAMA", "BUT", "CEBULA", "CHROMA", "CIS", "CO", "CZAS",
-            "DO", "DOM", "DOMEK", "DROGA", "DYM", "DWA", "EKRAN", "ERA",
-            "FARBA", "FORMA", "GRA", "GRY", "GÓRA", "HAMAK", "HONOR",
-            "IKONA", "IGŁA", "JA", "JAK", "JUTRO", "KOT", "KOTA", "KOTWICA", "KARA", "KAWA", "KINO", "KLASA", "KROK",
-            "LATO", "LITERA", "LITERAKI", "LIS", "ŁÓDŹ", "MAMA", "MIASTO", "MOC", "MYTO",
-            "NA", "NO", "NOS", "NOGA", "OKNO", "OKOP", "OPIS", "ORZEŁ",
-            "PARK", "PIES", "PŁOT", "PUNKT", "RAMA", "ROK", "ROWER", "RYBA",
-            "SCRABBLE", "SŁOWO", "SŁOWNIK", "SMOK", "STÓŁ", "SER", "SIŁA",
-            "TATA", "TRAWA", "TOM", "TOR", "UL", "USTA", "WAGA", "WODA", "WOR", "WÓDKA",
-            "XENON", "YETI", "ZA", "ZEBRA", "ZIMA", "ZNAK", "ŹREBIĘ", "ŻABA", "ŻYĆ"
-        ];
+        // Główna, pusta tablica, która zaraz przyjmie dane z obu plików
+        let dictionary = [];
+
+        async function loadDictionary() {
+            const statusDiv = document.getElementById('statusMessage');
+            const searchBtn = document.getElementById('searchBtn');
+            
+            try {
+                statusDiv.innerHTML = "Wczytywanie bazy słów (część 1 z 2)...";
+                const response1 = await fetch('slownik_part_aa');
+                if (!response1.ok) throw new Error();
+                const text1 = await response1.text();
+                
+                statusDiv.innerHTML = "Wczytywanie bazy słów (część 2 z 2)...";
+                const response2 = await fetch('slownik_part_ab');
+                if (!response2.ok) throw new Error();
+                const text2 = await response2.text();
+                
+                statusDiv.innerHTML = "Przetwarzanie danych...";
+                
+                // Łączenie tekstów i oczyszczanie słów (filtrowanie dla optymalizacji pamięci)
+                const fullText = text1 + "\n" + text2;
+                dictionary = fullText.split('\n')
+                                     .map(word => word.trim().toUpperCase())
+                                     .filter(word => word.length >= 2 && word.length <= 9);
+                                     
+                statusDiv.innerHTML = `Słownik gotowy! Załadowano ${dictionary.length.toLocaleString('pl-PL')} słów.`;
+                statusDiv.style.color = "var(--primary-color)";
+                searchBtn.innerText = "Szukaj słów";
+                searchBtn.disabled = false;
+            } catch (error) {
+                statusDiv.innerHTML = "Błąd: Nie znaleziono plików słownika (slownik_part_aa / slownik_part_ab) na serwerze.";
+                statusDiv.style.color = "red";
+                searchBtn.innerText = "Błąd bazy";
+            }
+        }
+
+        // Ładowanie bazy od razu przy wejściu na stronę
+        window.onload = loadDictionary;
 
         function calculatePoints(word) {
             let pts = 0;
@@ -272,7 +297,7 @@
         }
 
         function handleKeyPress(event) {
-            if (event.key === "Enter") {
+            if (event.key === "Enter" && !document.getElementById('searchBtn').disabled) {
                 findWords();
             }
         }
@@ -292,10 +317,11 @@
             }
             
             statusDiv.style.color = 'var(--primary-color)';
-            statusDiv.innerHTML = 'Przeszukiwanie słownika dla zestawu: "' + input + '"...';
+            statusDiv.innerHTML = 'Analizowanie anagramów dla zestawu: "' + input + '"...';
 
             let foundWords = [];
 
+            // Pętla wyszukująca anagramy w pełnej bazie ponad 2 milionów słów
             for (let word of dictionary) {
                 let tempInputLetters = input.split('');
                 let canBuild = true;
@@ -328,11 +354,17 @@
 
             if (foundWords.length === 0) {
                 statusDiv.style.color = 'red';
-                statusDiv.innerHTML = 'Nie znaleziono słów w bazie dla podanych liter.';
+                statusDiv.innerHTML = 'Brak pasujących słów dla podanego zestawu liter.';
                 return;
             }
 
-            statusDiv.innerHTML = 'Znaleziono ' + foundWords.length + ' pasujących słów!';
+            // Ograniczamy wyświetlanie do maksymalnie 500 najlepszych wyników, aby nie zawiesić przeglądarki
+            const totalFound = foundWords.length;
+            if (foundWords.length > 500) {
+                foundWords = foundWords.slice(0, 500);
+            }
+
+            statusDiv.innerHTML = `Znaleziono łącznie ${totalFound} pasujących słów! (Pokazuję 500 najwyżej punktowanych)`;
             resultsDiv.style.display = 'block';
 
             let groups = {};
