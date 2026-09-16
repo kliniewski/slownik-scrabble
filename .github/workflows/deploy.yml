@@ -20,7 +20,7 @@ jobs:
         FTP_HOST: ${{ secrets.FTP_SERVER }}
       run: |
         sudo apt-get update && sudo apt-get install -y lftp
-        lftp -u "$FTP_USER","$FTP_PASS" "$FTP_HOST" -e "pwd; ls; quit"
+        lftp -e "set ssl:verify-certificate no; open -u $FTP_USER,$FTP_PASS $FTP_HOST; pwd; ls; quit"
 
     - name: Sync files
       uses: SamKirkland/FTP-Deploy-Action@v4.3.5
